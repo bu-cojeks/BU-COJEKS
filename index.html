@@ -156,7 +156,7 @@ footer{background:var(--marine);color:#cfdcff;padding:1.8rem clamp(1rem,4vw,3rem
     <div class="field">
       <label for="code">Code gestionnaire</label>
       <input type="password" id="code" autocomplete="current-password" required>
-      <p class="hint">Collez le code reçu du responsable de COJEKS. Il reste enregistré sur cet appareil jusqu'à la déconnexion.</p>
+      <p class="hint">Saisissez le code donné par le responsable de COJEKS. Il reste enregistré sur cet appareil jusqu'à la déconnexion.</p>
     </div>
     <p class="err" id="loginErr" role="alert"></p>
     <div class="row">
@@ -244,6 +244,16 @@ const errMsg = e => e.status === 401 ? "Code refusé ou expiré. Reconnectez-vou
   : (e.status === 403 || e.status === 404) ? "Ce code n'a pas le droit de modifier le site."
   : !e.status ? "Connexion impossible. Vérifiez internet et réessayez." : "Erreur GitHub (" + e.status + "). Réessayez.";
 
+// Code simple : le jeton GitHub est chiffré dans acces.json et ouvert par le code que tape le gestionnaire
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function openAccess(raw) {
+  let a;
+  try { const r = await fetch("acces.json", { cache: "no-cache" }); if (!r.ok) return raw; a = await r.json(); } catch (e) { return raw; }
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(raw.toLowerCase()), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey({ name: "PBKDF2", salt: unb64(a.salt), iterations: a.iter, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+  try { return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(a.iv) }, key, unb64(a.data))); }
+  catch (e) { if (/^(github_pat_|ghp_)/.test(raw)) return raw; const x = new Error("code"); x.status = 401; throw x; }
+}
 async function gh(path, opt = {}) {
   const r = await fetch(`${CFG.api}/repos/${CFG.owner}/${CFG.repo}${path}`, {
     ...opt, headers: { Accept: "application/vnd.github+json", Authorization: "Bearer " + token, ...(opt.body ? { "Content-Type": "application/json" } : {}) }
@@ -387,10 +397,10 @@ $("fLevel").addEventListener("change", () => fillSubjects());
 $("loginForm").addEventListener("submit", async e => {
   e.preventDefault();
   const code = $("code").value.trim();
-  if (!code) { $("loginErr").textContent = "Collez le code reçu."; return; }
+  if (!code) { $("loginErr").textContent = "Saisissez le code reçu."; return; }
   $("loginErr").style.color = "var(--marine)"; $("loginErr").textContent = "Vérification…";
   try {
-    token = code;
+    token = await openAccess(code);
     const r = await gh("");
     if (r.permissions && r.permissions.push === false) { const x = new Error("lecture seule"); x.status = 403; throw x; }
     try { localStorage.setItem("cojeks-token", token); } catch (x) {}
