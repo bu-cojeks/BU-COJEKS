@@ -55,7 +55,7 @@ a.btn{text-decoration:none}
 
 main{max-width:68rem;margin:-4.2rem auto 0;position:relative;padding:0 clamp(1rem,4vw,3rem) 3rem}
 
-.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(12.5rem,1fr));gap:1rem;margin-bottom:2rem}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));gap:1rem;margin-bottom:2rem}
 .level{text-align:left;border:0;background:var(--white);color:var(--ink);border-radius:1.1rem;padding:1.2rem 1.3rem;display:block;width:100%;box-shadow:0 8px 24px rgba(29,34,89,.14);border-top:7px solid var(--c)}
 .level strong{display:block;font-size:1.45rem;color:var(--c)}
 .level span{display:block;font-size:.95rem;color:var(--muted);margin-top:.15rem}
@@ -114,7 +114,7 @@ footer{background:var(--marine);color:#cfdcff;padding:1.8rem clamp(1rem,4vw,3rem
       <div>
         <h1>Bibliothèque numérique</h1>
         <p class="org">Coordination des Jeunes de Keur Sabassy Thiam</p>
-        <p class="lead">Des documents scolaires en PDF, du primaire au lycée, et d'autres documents utiles. Gratuits, à télécharger en un clic.</p>
+        <p class="lead">Des documents scolaires en PDF, du primaire au lycée, en arabe et d'autres documents utiles. Gratuits, à télécharger en un clic.</p>
       </div>
     </div>
   </div>
@@ -171,7 +171,7 @@ footer{background:var(--marine);color:#cfdcff;padding:1.8rem clamp(1rem,4vw,3rem
     <h2 id="docT">Ajouter un document</h2>
     <div class="field">
       <label for="fTitle">Titre du document</label>
-      <input type="text" id="fTitle" required>
+      <input type="text" id="fTitle" dir="auto" required>
     </div>
     <div class="field">
       <label for="fLevel">Niveau</label>
@@ -213,6 +213,7 @@ const LEVELS = {
   primaire: { label: "Primaire", color: "var(--primaire)", subjects: ["Français", "Mathématiques", "Sciences"] },
   college:  { label: "Collège",  color: "var(--college)",  subjects: ["Littérature", "Sciences", "Mathématiques"] },
   lycee:    { label: "Lycée",    color: "var(--lycee)",    subjects: ["Sciences", "Mathématiques", "Littérature"] },
+  arabe:    { label: "Arabe / العربية", color: "#4338ca", subjects: [], note: "Documents en langue arabe" },
   autres:   { label: "Autres documents", color: "#0a6aa1", subjects: [], note: "Guides, formulaires et documents utiles à tous" }
 };
 // Code de démonstration. Avec un vrai serveur, la vérification doit se faire côté serveur.
@@ -334,8 +335,8 @@ function render() {
     <li class="doc">
       <span class="pdf" aria-hidden="true">PDF</span>
       <div class="info">
-        <h3>${esc(d.title)}</h3>
-        <div class="meta">${d.level === "autres" ? "" : `<span>${esc(d.subject)}</span>`}<span>${size(d.size)}</span><span>Ajouté le ${day(d.added)}</span></div>
+        <h3 dir="auto">${esc(d.title)}</h3>
+        <div class="meta">${LEVELS[d.level] && !LEVELS[d.level].subjects.length ? "" : `<span>${esc(d.subject)}</span>`}<span>${size(d.size)}</span><span>Ajouté le ${day(d.added)}</span></div>
       </div>
       <div class="actions">
         <a class="btn main" href="${esc(d.file)}" download="${esc(d.name)}" aria-label="Télécharger ${esc(d.title)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5M4 20h16"/></svg>Télécharger</a>
