@@ -184,7 +184,7 @@ footer{background:var(--marine);color:#cfdcff;padding:1.8rem clamp(1rem,4vw,3rem
     <div class="field">
       <label for="fFile">Fichier PDF</label>
       <input type="file" id="fFile" accept="application/pdf,.pdf">
-      <p class="hint" id="fileHint">Format PDF uniquement, 25 Mo maximum.</p>
+      <p class="hint" id="fileHint">Format PDF uniquement, 100 Mo maximum.</p>
     </div>
     <p class="err" id="docErr" role="alert"></p>
     <div class="row">
@@ -217,7 +217,7 @@ const LEVELS = {
   autres:   { label: "Autres documents", color: "#0a6aa1", subjects: [], note: "Guides, formulaires et documents utiles à tous" }
 };
 // Code de démonstration. Avec un vrai serveur, la vérification doit se faire côté serveur.
-const MAX_SIZE = 25 * 1024 * 1024;
+const MAX_SIZE = 100 * 1024 * 1024;
 
 /* ===== État ===== */
 let pendingDel = null, db, docs = [], level = "primaire", subject = "Tous", query = "", editingId = null;
@@ -277,9 +277,14 @@ async function change(msg, fn) {
   }
   throw new Error("conflit");
 }
+async function fileSha(path) {
+  const list = await gh(`/contents/${path.split("/").slice(0, -1).join("/")}?ref=${CFG.branch}`);
+  const f = list.find(x => x.path === path);
+  if (!f) { const e = new Error("absent"); e.status = 404; throw e; }
+  return f.sha;
+}
 async function dropFile(path) {
-  const j = await gh(`/contents/${path}?ref=${CFG.branch}`);
-  await gh("/contents/" + path, { method: "DELETE", body: JSON.stringify({ message: "Suppression : " + path, sha: j.sha, branch: CFG.branch }) });
+  await gh("/contents/" + path, { method: "DELETE", body: JSON.stringify({ message: "Suppression : " + path, sha: await fileSha(path), branch: CFG.branch }) });
 }
 async function addDoc(rec, file) {
   rec.file = "pdf/" + rec.id + ".pdf";
@@ -288,7 +293,7 @@ async function addDoc(rec, file) {
   catch (e) { await dropFile(rec.file).catch(() => {}); throw e; }
 }
 async function editDoc(rec, file) {
-  if (file) { const j = await gh(`/contents/${rec.file}?ref=${CFG.branch}`); await put(rec.file, "Remplacement : " + rec.title, await toB64(file), j.sha); }
+  if (file) await put(rec.file, "Remplacement : " + rec.title, await toB64(file), await fileSha(rec.file));
   await change("Catalogue : modification de " + rec.title, l => { const i = l.findIndex(x => x.id === rec.id); i < 0 ? l.push(rec) : l[i] = rec; });
 }
 async function removeDoc(rec) {
@@ -362,7 +367,7 @@ function openForm(d) {
   fillSubjects(d ? d.subject : (subject !== "Tous" ? subject : null));
   $("fTitle").value = d ? d.title : "";
   $("fFile").value = "";
-  $("fileHint").textContent = d ? "Laissez vide pour garder le PDF actuel (" + d.name + ")." : "Format PDF uniquement, 25 Mo maximum.";
+  $("fileHint").textContent = d ? "Laissez vide pour garder le PDF actuel (" + d.name + ")." : "Format PDF uniquement, 100 Mo maximum.";
   $("docErr").textContent = "";
   $("docDlg").showModal();
   $("fTitle").focus();
@@ -420,7 +425,7 @@ $("docForm").addEventListener("submit", async e => {
   if (!title) return showErr("Saisissez un titre.");
   if (!old && !file) return showErr("Choisissez un fichier PDF.");
   if (file && !(file.type === "application/pdf" || /\.pdf$/i.test(file.name))) return showErr("Le fichier doit être un PDF.");
-  if (file && file.size > MAX_SIZE) return showErr("Le fichier dépasse 25 Mo.");
+  if (file && file.size > MAX_SIZE) return showErr("Le fichier dépasse 100 Mo.");
   const rec = {
     id: old ? old.id : Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     title, level: $("fLevel").value, subject: $("fSubj").value,
